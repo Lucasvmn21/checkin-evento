@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Check-in do Evento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #000000;
+            color: #FFFF00;
+        }
+
+        h1, h2 {
+            color: #FFFF00;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: flex-start;
+            gap: 5px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #FFFF00;
+        }
+
+        .tab-button {
+            background-color: #222;
+            color: #FFFF00;
+            border: none;
+            padding: 15px 25px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button:hover {
+            background-color: #333;
+        }
+
+        .tab-button.active {
+            background-color: #444;
+            border-bottom: 2px solid #FFFF00;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+            border-radius: 10px;
+            background-color: #222;
+            margin-top: 20px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        input[type="text"], select {
+            padding: 10px;
+            width: 300px;
+            font-size: 16px;
+            margin-top: 5px;
+            background-color: #333;
+            color: #FFFF00;
+            border: 1px solid #FFFF00;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-left: 10px;
+            cursor: pointer;
+            background-color: #333;
+            color: #FFFF00;
+            border: 1px solid #FFFF00;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #444;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #333;
+            border-radius: 5px;
+        }
+
+        .chegou {
+            color: #00FF00;
+        }
+
+        .nao-chegou {
+            color: #FF0000;
+        }
+
+        .logo {
+            max-height: 100px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <img src="https://i.imgur.com/Y2nVGsk.png" alt="Logo do Evento" class="logo">
+
+    <h1>Check-in do Evento</h1>
+
+    <div class="tabs">
+        <div class="tab-button active" onclick="showTab('adicionar')">Adicionar Convidado</div>
+        <div class="tab-button" onclick="showTab('checkin')">Check-in</div>
+        <div class="tab-button" onclick="showTab('listaCompleta')">Lista Completa</div>
+    </div>
+
+    <div id="adicionar" class="tab-content active">
+        <h2>Adicionar Convidado</h2>
+        <input type="text" id="cadastroInput" placeholder="Nome completo do convidado">
+        <select id="tipoIngresso">
+            <option value="" disabled selected>Selecione o tipo de ingresso</option>
+            <option value="Pista">Pista</option>
+            <option value="Área VIP">Área VIP</option>
+        </select>
+        <button onclick="adicionarConvidado()">Adicionar</button>
+    </div>
+
+    <div id="checkin" class="tab-content">
+        <h2>Pesquisar Convidado</h2>
+        <input type="text" id="pesquisaInput" placeholder="Digite o nome para pesquisar" onkeyup="atualizarLista()">
+        <ul id="listaConvidados"></ul>
+
+        <h2>🔎 Verificar Presença</h2>
+        <input type="text" id="verificacaoInput" placeholder="Digite o nome para consultar" onkeyup="verificarPresenca()">
+        <div id="resultadoVerificacao"></div>
+    </div>
+
+    <div id="listaCompleta" class="tab-content">
+        <h2>Lista de Todos os Convidados</h2>
+        <p>Convidados Adicionados: <span id="qtdConvidados">0</span></p>
+        <p>Convidados com Check-in: <span id="qtdComCheckin">0</span></p>
+        <p>Convidados Sem Check-in: <span id="qtdSemCheckin">0</span></p>
+        <ul id="todosConvidados"></ul>
+    </div>
+
+    <script>
+        const convidados = {};
+
+        function normalizarNome(nome) {
+            return nome.trim().toLowerCase();
+        }
+
+        function adicionarConvidado() {
+            const nomeDigitado = document.getElementById("cadastroInput").value.trim();
+            const tipoIngresso = document.getElementById("tipoIngresso").value;
+            const chave = normalizarNome(nomeDigitado);
+
+            if (nomeDigitado === "") {
+                alert("Digite um nome válido.");
+                return;
+            }
+
+            if (tipoIngresso === "") {
+                alert("Selecione o tipo de ingresso (Pista ou Área VIP).");
+                return;
+            }
+
+            if (chave in convidados) {
+                alert(`${nomeDigitado} já está cadastrado.`);
+            } else {
+                convidados[chave] = {
+                    nomeOriginal: nomeDigitado,
+                    status: false,
+                    ingresso: tipoIngresso
+                };
+                alert(`${nomeDigitado} foi adicionado à lista como "${tipoIngresso}".`);
+            }
+
+            document.getElementById("cadastroInput").value = "";
+            document.getElementById("tipoIngresso").selectedIndex = 0;
+            atualizarLista();
+            atualizarListaCompleta();
+        }
+
+        function fazerCheckin(nome) {
+            const chave = normalizarNome(nome);
+
+            if (convidados[chave].status) {
+                alert(`${convidados[chave].nomeOriginal} já fez check-in.`);
+                return;
+            }
+
+            const confirmar = confirm(`Confirmar check-in de:\n\n🧍 Nome: ${convidados[chave].nomeOriginal}\n🎟️ Ingresso: ${convidados[chave].ingresso}\n\nDeseja continuar?`);
+            if (!confirmar) {
+                alert("Check-in cancelado.");
+                return;
+            }
+
+            convidados[chave].status = true;
+            alert(`Check-in confirmado para ${convidados[chave].nomeOriginal}.`);
+            atualizarLista();
+            atualizarListaCompleta();
+        }
+
+        function atualizarLista() {
+            const pesquisa = document.getElementById("pesquisaInput").value.trim().toLowerCase();
+            const lista = document.getElementById("listaConvidados");
+            lista.innerHTML = "";
+
+            if (pesquisa === "") return;
+
+            const resultados = Object.values(convidados).filter(convidado =>
+                convidado.nomeOriginal.toLowerCase().includes(pesquisa)
+            );
+
+            if (resultados.length === 0) {
+                lista.innerHTML = "<li>Nenhum convidado encontrado.</li>";
+            }
+
+            resultados.forEach(info => {
+                const li = document.createElement("li");
+                li.innerHTML = `
+                    ${info.nomeOriginal} - ${info.ingresso} - ${info.status ? "✅ Chegou" : "❌ Não chegou"}
+                    <button onclick="fazerCheckin('${info.nomeOriginal}')">Fazer Check-in</button>
+                `;
+                li.className = info.status ? "chegou" : "nao-chegou";
+                lista.appendChild(li);
+            });
+        }
+
+        function verificarPresenca() {
+            const nomeDigitado = document.getElementById("verificacaoInput").value.trim().toLowerCase();
+            const resultado = document.getElementById("resultadoVerificacao");
+            resultado.innerHTML = "";
+
+            if (nomeDigitado === "") return;
+
+            const encontrados = Object.values(convidados).filter(convidado =>
+                convidado.nomeOriginal.toLowerCase().includes(nomeDigitado)
+            );
+
+            if (encontrados.length === 0) {
+                resultado.innerHTML = "<p style='color: red;'>❌ Nenhum convidado encontrado.</p>";
+                return;
+            }
+
+            encontrados.forEach(info => {
+                const p = document.createElement("p");
+                p.innerHTML = `${info.nomeOriginal} - ${info.ingresso} - ${info.status ? "✅ Já fez check-in" : "❌ Ainda não fez check-in"}`;
+                p.style.color = info.status ? "green" : "orange";
+                resultado.appendChild(p);
+            });
+        }
+
+        function atualizarListaCompleta() {
+            const listaComCheckin = document.getElementById("todosConvidados");
+            listaComCheckin.innerHTML = "";
+
+            const nomesOrdenados = Object.values(convidados).sort((a, b) =>
+                a.nomeOriginal.localeCompare(b.nomeOriginal)
+            );
+
+            let comCheckin = 0;
+            let semCheckin = 0;
+
+            const convidadosComCheckin = nomesOrdenados.filter(info => info.status);
+            const convidadosSemCheckin = nomesOrdenados.filter(info => !info.status);
+
+            convidadosComCheckin.forEach(info => {
+                const li = document.createElement("li");
+                li.innerHTML = `🧍 ${info.nomeOriginal} - 🎟️ ${info.ingresso} - ${info.status ? "✅ Chegou" : "❌ Não chegou"}`;
+                li.className = "chegou";
+                listaComCheckin.appendChild(li);
+                comCheckin++;
+            });
+
+            convidadosSemCheckin.forEach(info => {
+                const li = document.createElement("li");
+                li.innerHTML = `🧍 ${info.nomeOriginal} - 🎟️ ${info.ingresso} - ${info.status ? "✅ Chegou" : "❌ Não chegou"}`;
+                li.className = "nao-chegou";
+                listaComCheckin.appendChild(li);
+                semCheckin++;
+            });
+
+            document.getElementById("qtdConvidados").innerText = Object.keys(convidados).length;
+            document.getElementById("qtdComCheckin").innerText = comCheckin;
+            document.getElementById("qtdSemCheckin").innerText = semCheckin;
+        }
+
+        function showTab(tabName) {
+            const tabs = document.querySelectorAll('.tab-content');
+            const buttons = document.querySelectorAll('.tab-button');
+
+            tabs.forEach(tab => tab.classList.remove('active'));
+            buttons.forEach(button => button.classList.remove('active'));
+
+            document.getElementById(tabName).classList.add('active');
+
+            const activeButton = Array.from(buttons).find(button =>
+                button.textContent.toLowerCase().includes(tabName.toLowerCase())
+            );
+            if (activeButton) activeButton.classList.add('active');
+
+            if (tabName === "listaCompleta") {
+                atualizarListaCompleta();
+            }
+        }
+    </script>
+
+</body>
+</html>
