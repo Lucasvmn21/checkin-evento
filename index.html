@@ -153,9 +153,31 @@
 
     <script>
         const convidados = {};
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwCX_rz7YCh_S-NcuQFtwuZHRGlb3VPUyEjzknIvup0SFqTl8QzFbAHWG9XXzpTNv3zDw/exec"; // 👈 Cole aqui a URL do Google Apps Script
 
         function normalizarNome(nome) {
-            return nome.trim().toLowerCase();
+            return nome.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
+
+        function enviarParaPlanilha(nome, ingresso, status) {
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    nome: nome,
+                    ingresso: ingresso,
+                    status: status
+                })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("Erro ao enviar para a planilha.");
+                console.log("Convidado enviado com sucesso.");
+            })
+            .catch(error => {
+                console.error("Erro:", error);
+            });
         }
 
         function adicionarConvidado() {
@@ -182,6 +204,7 @@
                     ingresso: tipoIngresso
                 };
                 alert(`${nomeDigitado} foi adicionado à lista como "${tipoIngresso}".`);
+                enviarParaPlanilha(nomeDigitado, tipoIngresso, false);
             }
 
             document.getElementById("cadastroInput").value = "";
@@ -206,6 +229,7 @@
 
             convidados[chave].status = true;
             alert(`Check-in confirmado para ${convidados[chave].nomeOriginal}.`);
+            enviarParaPlanilha(convidados[chave].nomeOriginal, convidados[chave].ingresso, true);
             atualizarLista();
             atualizarListaCompleta();
         }
@@ -271,26 +295,17 @@
             let comCheckin = 0;
             let semCheckin = 0;
 
-            const convidadosComCheckin = nomesOrdenados.filter(info => info.status);
-            const convidadosSemCheckin = nomesOrdenados.filter(info => !info.status);
-
-            convidadosComCheckin.forEach(info => {
+            nomesOrdenados.forEach(info => {
                 const li = document.createElement("li");
                 li.innerHTML = `🧍 ${info.nomeOriginal} - 🎟️ ${info.ingresso} - ${info.status ? "✅ Chegou" : "❌ Não chegou"}`;
-                li.className = "chegou";
+                li.className = info.status ? "chegou" : "nao-chegou";
                 listaComCheckin.appendChild(li);
-                comCheckin++;
+
+                if (info.status) comCheckin++;
+                else semCheckin++;
             });
 
-            convidadosSemCheckin.forEach(info => {
-                const li = document.createElement("li");
-                li.innerHTML = `🧍 ${info.nomeOriginal} - 🎟️ ${info.ingresso} - ${info.status ? "✅ Chegou" : "❌ Não chegou"}`;
-                li.className = "nao-chegou";
-                listaComCheckin.appendChild(li);
-                semCheckin++;
-            });
-
-            document.getElementById("qtdConvidados").innerText = Object.keys(convidados).length;
+            document.getElementById("qtdConvidados").innerText = nomesOrdenados.length;
             document.getElementById("qtdComCheckin").innerText = comCheckin;
             document.getElementById("qtdSemCheckin").innerText = semCheckin;
         }
